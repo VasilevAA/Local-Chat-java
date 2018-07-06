@@ -26,6 +26,7 @@ public class ChatServer {
             System.out.println("Server is on!");
 
             while (true) {
+
                 clientSocket = serverSocket.accept();
                 ClientHandler client = new ClientHandler(clientSocket, this);
                 new Thread(client).start();
