@@ -18,17 +18,19 @@ public class Room extends HashSet<ClientHandler> {
     }
 
     public void sendMessage(ResponseToClient message) {
-        for (ClientHandler roommate : this) {
-            roommate.sendMessage(message);
-        }
+        forEach(clientHandler -> clientHandler.sendMessage(message));
     }
 
     public void sendPrivateMessage(ResponseToClient message, String receiver) {
-        for (ClientHandler roommate : this) {
-            if (roommate.getNickname().equals(receiver)) {
-                roommate.sendMessage(message);
+        forEach(clientHandler -> {
+            if (clientHandler.getNickname().equals(receiver)) {
+                clientHandler.sendMessage(message);
             }
-        }
+        });
     }
 
+    @Override
+    public boolean equals(Object o) {
+            return o == this;
+    }
 }

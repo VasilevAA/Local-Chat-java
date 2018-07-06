@@ -26,7 +26,6 @@ public class ChatServer {
             System.out.println("Server is on!");
 
             while (true) {
-
                 clientSocket = serverSocket.accept();
                 ClientHandler client = new ClientHandler(clientSocket, this);
                 new Thread(client).start();
@@ -49,6 +48,7 @@ public class ChatServer {
 
 
     void removeEmptyRooms() { // TODO: 06.07.2018 insert this somewhere
+
         Iterator<Room> it = roomPull.iterator();
         while (it.hasNext()) {
             Room r = it.next();
@@ -79,7 +79,7 @@ public class ChatServer {
     public void addNewClient(ClientHandler client) {
         Room room = getRoomById(client.getRoomId());
 
-        if (room == systemRoom) {
+        if (room.equals(systemRoom)) {
             room = new Room(client.getRoomId());
             roomPull.add(room);
         }

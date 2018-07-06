@@ -194,7 +194,7 @@ public class ClientHandler implements Runnable {
 
     private void handleRoomCommand(String[] command) {
         if (command.length == 1) {
-            sendMessage(ResponseToClient.NOTE("Current room is: " + roomId));
+            sendMessage(ResponseToClient.NOTE("Current room is: " + chatServer.getRoomById(roomId).getRoomId()));
             return;
         }
 
@@ -303,5 +303,10 @@ public class ClientHandler implements Runnable {
     @Override
     public String toString() {
         return nickname;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+            return o == this;
     }
 }
