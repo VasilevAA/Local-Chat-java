@@ -22,29 +22,22 @@ public class ChatServer {
     public void start() {
         Socket clientSocket = null;
 
-        ServerSocket serverSocket = null;
-
-        try {
-            serverSocket = new ServerSocket(PORT);
-
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server is on!");
 
             while (true) {
                 clientSocket = serverSocket.accept();
-
                 ClientHandler client = new ClientHandler(clientSocket, this);
-
-
                 new Thread(client).start();
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
             try {
-                assert clientSocket != null;
-                clientSocket.close();
+                if (clientSocket != null) {
+                    clientSocket.close();
+                }
                 System.out.println("Server is off!");
-                serverSocket.close();
 
             } catch (IOException e) {
 
@@ -54,11 +47,11 @@ public class ChatServer {
     }
 
 
-    void removeEmptyRooms(){ // TODO: 06.07.2018 insert this somewhere
-        Iterator<Room> it= roomPull.iterator();
-        while (it.hasNext()){
+    void removeEmptyRooms() { // TODO: 06.07.2018 insert this somewhere
+        Iterator<Room> it = roomPull.iterator();
+        while (it.hasNext()) {
             Room r = it.next();
-            if(r.isEmpty()){
+            if (r.isEmpty()) {
                 roomPull.remove(r);
             }
         }
@@ -73,12 +66,12 @@ public class ChatServer {
         return systemRoom;
     }
 
-    public void sendMessageToAllRoom(ResponseToClient message, String roomId) {
+    public void sendMessageToRoom(ResponseToClient message, String roomId) {
         getRoomById(roomId).sendMessage(message);
     }
 
     public void sendPrivateMessage(ResponseToClient message, String roomId, String receiverName) {
-        getRoomById(roomId).sendPrivateMessage(message,receiverName);
+        getRoomById(roomId).sendPrivateMessage(message, receiverName);
     }
 
 
@@ -93,7 +86,19 @@ public class ChatServer {
     }
 
     public void removeClient(ClientHandler client) {
-            getRoomById(client.getRoomId()).removeRoommate(client);
+        getRoomById(client.getRoomId()).removeRoommate(client);
+    }
+
+    public void sendGlobalMessage(){
+        StringBuilder str = new StringBuilder("Room pull:\n");
+        for (Room room : roomPull) {
+            str.append(room.getRoomId()).append('\n');
+        }
+        for (Room room : roomPull) {
+
+            room.sendMessage(ResponseToClient.NOTE(str.toString()));
+        }
+
     }
 }
 

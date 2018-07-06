@@ -5,16 +5,17 @@ import server.network.handler.ClientHandler;
 
 import java.util.ArrayList;
 
-public class Room {
+public class Room extends ArrayList<ClientHandler>{
     private ArrayList<ClientHandler> clients = new ArrayList<>();
 
     private String roomId;
 
-    public ArrayList<ClientHandler> getClients() {
-        return clients;
-    }
+//    public ArrayList<ClientHandler> getClients() {
+//        return clients;
+//    }
 
     public Room(String id) {
+        super();
         roomId = id;
     }
 
@@ -22,17 +23,17 @@ public class Room {
         return roomId;
     }
 
-    public void addRoommate(ClientHandler client) {
-        clients.add(client);
-    }
-
-    public void removeRoommate(ClientHandler client) {
-        clients.remove(client);
-    }
-
-    public int numberOfChatters() {
-        return clients.size();
-    }
+//    public void addRoommate(ClientHandler client) {
+//        clients.add(client);
+//    }
+//
+//    public void removeRoommate(ClientHandler client) {
+//        clients.remove(client);
+//    }
+//
+//    public int numberOfChatters() {
+//        return clients.size();
+//    }
 
     public void sendMessage(ResponseToClient message) {
         for (ClientHandler roommate : clients) {

@@ -12,14 +12,13 @@ import java.util.Random;
 
 public class ClientHandler implements Runnable {
 
-    private ChatServer chatServer;
+    private ChatServer chatServer = null;
 
-    private DataOutputStream outMessage;
-    private DataInputStream inMessage;
+    private DataOutputStream outMessage = null;
+    private DataInputStream inMessage = null;
 
     private String nickname = "";
     private String roomId = "";
-
 
 
     public String getRoomId() {
@@ -32,111 +31,89 @@ public class ClientHandler implements Runnable {
             this.outMessage = new DataOutputStream(clientSocket.getOutputStream());
             this.inMessage = new DataInputStream(clientSocket.getInputStream());
         } catch (IOException e) {
+            System.err.println("Fail to open data streams!");
             e.printStackTrace();
         }
     }
 
     @Override
     public void run() {
+        try {
+            while (true) {
+                String clientMessage = inMessage.readUTF().trim();
 
-        while (true) {
-
-            try {
-                if (inMessage.available() > 0) {
-                    String clientMessage = inMessage.readUTF();
-
-                    if (clientMessage.startsWith("/")) {
-
-                        if (processIncomingCommand(clientMessage)) {
-                            continue;
-                        } else {
-                            return;
-                        }
-                    }
-
-                    chatServer.sendMessageToAllRoom(ResponseToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
+                if (clientMessage.startsWith("/")) {
+                    processIncomingCommand(clientMessage);
+                } else {
+                    chatServer.sendMessageToRoom(ResponseToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
-
+        } catch (IOException e) {
+            System.err.println("Fail to process incoming message; client: " + nickname + ", room: " + roomId);
+            e.printStackTrace();
         }
-
     }
 
     public String getNickname() {
         return nickname;
     }
 
-    private boolean processIncomingCommand(String message) {
-        String[] parse = message.split("\\s+");
-        String command = parse[0];
-
-        switch (command) {
+    private void processIncomingCommand(String message) {
+        String[] commands = message.split("\\s+");
+        String mainCommand = commands[0];
+        switch (mainCommand) {
             case "/exit":
                 handleExitCommand();
-                return false;
-
+                return;
             case "/leave":
                 handleLeaveCommand();
-                return true;
-
+                return;
             case "/nick":
-                handleNickCommand(parse);
-                return true;
-
+                handleNickCommand(commands);
+                return;
             case "/room":
-                handleRoomCommand(parse);
-                return true;
-
+                handleRoomCommand(commands);
+                return;
             case "/help":
-                handleHelpCommand(parse);
-                return true;
-
+                handleHelpCommand(commands);
+                return;
             case "/count":
                 handleCountCommand();
-
-                return true;
-
+                return;
             case "/list":
                 handleListCommand();
-                return true;
-
+                return;
             case "/w":
-                handlePMessage(parse,message);
-                return true;
-
+                handlePMessage(commands, message);
+                return;
             case "/clear":
-                    handleClearCommand(parse);
-                return true;
-
+                handleClearCommand(commands);
+                return;
             default:
                 sendMessage(ResponseToClient.WARNING("No such command!\n" +
                         "Type \"/help\" for information!"));
-                return true;
-
         }
     }
 
-    private void handleClearCommand(String[] parse) { // TODO: 06.07.2018 diff types of clear
+    private void handleClearCommand(String[] commands) { // TODO: 06.07.2018 diff types of clear
         sendMessage(ResponseToClient.COMMAND("clear"));
     }
 
-    private void handlePMessage(String[] parse, String message) {
-        if (parse.length < 2) {
-            sendMessage(ResponseToClient.WARNING("Missing argument (reciever)"));
+    private void handlePMessage(String[] commands, String message) {
+        if (commands.length < 2) {
+            sendMessage(ResponseToClient.WARNING("Missing argument (receiver)"));
             return;
         }
 
-        String reciever = parse[1];
+        String receiver = commands[1];
 
-        message = message.replaceFirst("/w","").
-                replaceFirst(reciever,"").
+        message = message.replaceFirst("/w", "").
+                replaceFirst(receiver, "").
                 trim();
 
-        chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, reciever);
-        if(!nickname.equals(reciever)) {
-            chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, nickname);
+        chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, receiver), roomId, receiver);
+        if (!nickname.equals(receiver)) {
+            chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, receiver), roomId, nickname);
         }
 
     }
@@ -156,13 +133,14 @@ public class ClientHandler implements Runnable {
     private void handleListCommand() {
         StringBuilder str = new StringBuilder();
         for (ClientHandler clientHandler : chatServer.getRoomById(roomId).getClients()) {
-                str.append(clientHandler.toString()).append('\n');
+            str.append(clientHandler.toString()).append('\n');
         }
         sendMessage(ResponseToClient.NOTE("People in this room:\n" + str.toString()));
     }
 
-    private void handleHelpCommand(String[] parse) {
-        if(parse.length == 1) {
+    private void handleHelpCommand(String[] commands) {
+        chatServer.sendGlobalMessage();
+        if (commands.length == 1) {
             sendMessage(ResponseToClient.NOTE(
                     "commands:\n" +
                             "/help <command> - detail help on given command\n" +
@@ -179,10 +157,13 @@ public class ClientHandler implements Runnable {
             ));
             return;
         }
-        if(parse.length > 2){
+        if (commands.length > 2) {
+            sendMessage(ResponseToClient.WARNING("Too many arguments!"));
             return;
         }
-        switch (parse[1]){
+
+        String argument = commands[1];
+        switch (argument) {
             case "nick":
                 sendMessage(ResponseToClient.NOTE("Nick should contain only numbers, letters or '_'.\n" +
                         "Nick's length can't be less than 3.\n" +
@@ -190,8 +171,8 @@ public class ClientHandler implements Runnable {
                 break;
 
             case "room":
-                sendMessage(ResponseToClient.NOTE("Room id should contain only numbers, letters or '_'.\n"+
-                        "Id's length can't be less than 3.\n"+
+                sendMessage(ResponseToClient.NOTE("Room id should contain only numbers, letters or '_'.\n" +
+                        "Id's length can't be less than 3.\n" +
                         "Any whitespace characters are forbidden."));
                 break;
 
@@ -205,26 +186,26 @@ public class ClientHandler implements Runnable {
                         "Also you can PM to yourself or to non-existing users (for notes maybe)"));
                 break;
 
-                default:
-                    sendMessage(ResponseToClient.NOTE("CommandMessage is not correct"));
-                    break;
+            default:
+                sendMessage(ResponseToClient.NOTE("CommandMessage is not correct"));
+                break;
         }
-
-
     }
 
-    private void handleRoomCommand(String[] parse) {
-        if (parse.length == 1) {
+    private void handleRoomCommand(String[] command) {
+        if (command.length == 1) {
             sendMessage(ResponseToClient.NOTE("Current room is: " + roomId));
             return;
         }
 
-        if(parse.length > 2 || parse[1].length() < 3 || !parse[1].matches("((?U)\\w+)|")){
+        String newRoom = command[1];
+
+        if (command.length > 2 || newRoom.length() < 3 || !newRoom.matches("((?U)\\w+)|")) {
             sendMessage(ResponseToClient.WARNING("Room id is not correct!\nSee /help room"));
             return;
         }
 
-        if (roomId.equals(parse[1])) {
+        if (roomId.equals(newRoom)) {
             sendMessage(ResponseToClient.WARNING("You are already in this room!"));
             return;
         }
@@ -232,62 +213,60 @@ public class ClientHandler implements Runnable {
         String tempRoom = roomId;
         chatServer.removeClient(this);
 
-        roomId = parse[1];
+        roomId = newRoom;
         chatServer.addNewClient(this);
-
-        sendMessage(ResponseToClient.COMMAND("room_change",roomId));
+        sendMessage(ResponseToClient.COMMAND("room_change", roomId));
 
         nickname = getUniqueNicknameInRoom(nickname);
-        sendMessage(ResponseToClient.COMMAND("nick_change",nickname));
+        sendMessage(ResponseToClient.COMMAND("nick_change", nickname));
 
-        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " joined the room!"), roomId);
-        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
-
+        chatServer.sendMessageToRoom(ResponseToClient.NOTE(nickname + " joined the room!"), roomId);
+        chatServer.sendMessageToRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
     }
 
-    private boolean nameIsNotUniqueInRoom(String nick){
+    private boolean nameIsNotUniqueInRoom(String nick) {
         for (ClientHandler client : chatServer.getRoomById(roomId).getClients()) {
-            if(client != this && client.getNickname().equals(nick)){
+            if (client != this && client.getNickname().equals(nick)) {
                 return true;
             }
         }
         return false;
     }
 
-    private String getUniqueNicknameInRoom(String nick){
+    private String getUniqueNicknameInRoom(String nick) {
         String newNick = nick;
         int count = 1;
-
-        while(nameIsNotUniqueInRoom(newNick)){
-            newNick = nick + (count++);
+        while (nameIsNotUniqueInRoom(newNick)) {
+            newNick = nick + '_' + (count++);
         }
-
         return newNick;
     }
 
-    private void handleNickCommand(String[] parse) {
-        if (parse.length == 1) {
+    private void handleNickCommand(String[] commands) {
+        if (commands.length == 1) {
             sendMessage(ResponseToClient.NOTE("Your nickname is: " + nickname));
             return;
         }
 
-        if(parse.length > 2 || parse[1].length() < 3 || !parse[1].matches("((?U)\\w+)|")){
+        String newNickname = commands[1];
+
+        if (commands.length > 2 || newNickname.length() < 3 || !newNickname.matches("((?U)\\w+)|")) {
             sendMessage(ResponseToClient.WARNING("New nickname is not correct!\nSee /help nick"));
             return;
         }
 
-        if( parse[1].equals(nickname) || nameIsNotUniqueInRoom(parse[1])){
-            sendMessage(ResponseToClient.WARNING("Nickname \""+parse[1]+"\" is already occupied in this room!\n" +
+        if (newNickname.equals(nickname) || nameIsNotUniqueInRoom(newNickname)) {
+            sendMessage(ResponseToClient.WARNING("Nickname \"" + newNickname + "\" is already occupied in this room!\n" +
                     "/list - to see all chatters."));
             return;
         }
 
         if (!nickname.isEmpty()) {
-            chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " changed nick to: " + parse[1]), roomId);
+            chatServer.sendMessageToRoom(ResponseToClient.NOTE(nickname + " changed nick to: " + commands[1]), roomId);
         }
 
-        nickname = parse[1];
-        sendMessage(ResponseToClient.COMMAND("nick_change",nickname));
+        nickname = newNickname;
+        sendMessage(ResponseToClient.COMMAND("nick_change", nickname));
     }
 
 
@@ -296,30 +275,29 @@ public class ClientHandler implements Runnable {
 
         String tempRoom = roomId;
 
-        roomId = nickname + randomRoom();
+        roomId = randomRoom();
         chatServer.addNewClient(this);
 
-        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
+        chatServer.sendMessageToRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
         sendMessage(ResponseToClient.NOTE("You are in empty/private room now"));
     }
 
     private String randomRoom() {
-        StringBuilder str = new StringBuilder();
+        StringBuilder str = new StringBuilder( "$&_" + nickname + "_&$");
         for (int i = 1; i <= 50; i++) {
-            str.append(new Random().nextInt(i * 7)).append(Character.valueOf((char) new Random().nextInt(i * 5)));
+            str.append(new Random().nextInt(10)).append(nickname.charAt(new Random().nextInt(nickname.length())));
         }
         return str.toString();
     }
 
     public void sendMessage(ResponseToClient msg) {
-
         try {
             outMessage.writeUTF(msg.toString());
             outMessage.flush();
         } catch (IOException e) {
+            System.err.println("Fail to send message; client: " + nickname + ", room: " + roomId + ", message: " + msg.toString());
             e.printStackTrace();
         }
-
     }
 
     @Override
