@@ -6,8 +6,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
 
 
@@ -55,7 +53,7 @@ public class ClientHandler implements Runnable {
                         }
                     }
 
-                    chatServer.sendMessageToRoommates(MessageToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
+                    chatServer.sendMessageToAllRoom(MessageToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -119,7 +117,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void handleClearCommand(String[] parse) {
+    private void handleClearCommand(String[] parse) { // TODO: 06.07.2018 diff types of clear
         sendMessage(MessageToClient.COMMAND("clear"));
     }
 
@@ -143,31 +141,21 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleExitCommand() {
-
         handleLeaveCommand();
         sendMessage(MessageToClient.COMMAND("exit"));
-        chatServer.getClients().remove(this);
-
+        chatServer.removeClient(this);
     }
 
     private void handleCountCommand() {
-        int count = 0;
-        for (ClientHandler clientHandler : chatServer.getClients()) {
-            if (roomId.equals(clientHandler.roomId)) {
-                count++;
-            }
-        }
-        sendMessage(MessageToClient.NOTE("Current number of chatters: " + count));
+        sendMessage(MessageToClient.NOTE("Current number of chatters: "
+                + chatServer.getRoomById(roomId).numberOfChatters()));
     }
 
     private void handleListCommand() {
         StringBuilder str = new StringBuilder();
-        for (ClientHandler clientHandler : chatServer.getClients()) {
-            if (roomId.equals(clientHandler.roomId)) {
+        for (ClientHandler clientHandler : chatServer.getRoomById(roomId).getClients()) {
                 str.append(clientHandler.toString()).append('\n');
-            }
         }
-
         sendMessage(MessageToClient.NOTE("People in this room:\n" + str.toString()));
     }
 
@@ -240,42 +228,38 @@ public class ClientHandler implements Runnable {
         }
 
         String tempRoom = roomId;
+        chatServer.removeClient(this);
+
         roomId = parse[1];
+        chatServer.addNewClient(this);
+
         sendMessage(MessageToClient.COMMAND("room_change",roomId));
 
         nickname = getUniqueNicknameInRoom(nickname);
         sendMessage(MessageToClient.COMMAND("nick_change",nickname));
 
-        chatServer.sendMessageToRoommates(MessageToClient.NOTE(nickname + " joined the room!"), roomId);
-        chatServer.sendMessageToRoommates(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
+        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " joined the room!"), roomId);
+        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
 
     }
 
-    private boolean isNameUniqueInRoom(String nick){
-        for (ClientHandler client : chatServer.getClients()) {
-            if(client.getRoomId().equals(roomId) &&  client != this && client.getNickname().equals(nick)){
-                return false;
+    private boolean nameIsNotUniqueInRoom(String nick){
+        for (ClientHandler client : chatServer.getRoomById(roomId).getClients()) {
+            if(client != this && client.getNickname().equals(nick)){
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     private String getUniqueNicknameInRoom(String nick){
-        ArrayList<ClientHandler> list = chatServer.getClients();
-        Iterator<ClientHandler> iterator= list.iterator();
-
         String newNick = nick;
         int count = 1;
-        while(iterator.hasNext()){
 
-            ClientHandler client = iterator.next();
-
-            if(client.getRoomId().equals(roomId) &&  client != this && client.getNickname().equals(newNick)){
-                newNick = nick + (count++);
-                iterator = list.iterator();
-            }
-
+        while(nameIsNotUniqueInRoom(newNick)){
+            newNick = nick + (count++);
         }
+
         return newNick;
     }
 
@@ -290,16 +274,14 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-
-        if( parse[1].equals(nickname) || (!nickname.isEmpty() && !isNameUniqueInRoom(parse[1]))){
+        if( parse[1].equals(nickname) || nameIsNotUniqueInRoom(parse[1])){
             sendMessage(MessageToClient.WARNING("Nickname \""+parse[1]+"\" is already occupied in this room!\n" +
                     "/list - to see all chatters."));
             return;
         }
 
-
         if (!nickname.isEmpty()) {
-            chatServer.sendMessageToRoommates(MessageToClient.NOTE(nickname + " changed nick to: " + parse[1]), roomId);
+            chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " changed nick to: " + parse[1]), roomId);
         }
 
         nickname = parse[1];
@@ -308,10 +290,14 @@ public class ClientHandler implements Runnable {
 
 
     private void handleLeaveCommand() {
-        String tempRoom = roomId;
-        roomId = nickname + randomRoom();
+        chatServer.removeClient(this);
 
-        chatServer.sendMessageToRoommates(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
+        String tempRoom = roomId;
+
+        roomId = nickname + randomRoom();
+        chatServer.addNewClient(this);
+
+        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
         sendMessage(MessageToClient.NOTE("You are in empty/private room now"));
     }
 

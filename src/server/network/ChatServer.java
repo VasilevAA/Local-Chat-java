@@ -7,16 +7,15 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class ChatServer {
 
     private static final int PORT = 3443;
 
-    private ArrayList<ClientHandler> clients = new ArrayList<>();
+    private ArrayList<Room> roomPull = new ArrayList<>();
 
-    ArrayList<ClientHandler> getClients() {
-        return clients;
-    }
+    private static final Room systemRoom = new Room("$$system##room&&"); //temporary room (to rid of null room)
 
     public void start() {
         Socket clientSocket = null;
@@ -26,14 +25,13 @@ public class ChatServer {
         try {
             serverSocket = new ServerSocket(PORT);
 
-            System.out.println("Сервер запущен!");
+            System.out.println("Server is on!");
 
             while (true) {
                 clientSocket = serverSocket.accept();
 
                 ClientHandler client = new ClientHandler(clientSocket, this);
 
-                clients.add(client);
 
                 new Thread(client).start();
             }
@@ -43,7 +41,7 @@ public class ChatServer {
             try {
                 assert clientSocket != null;
                 clientSocket.close();
-                System.out.println("Сервер остановлен");
+                System.out.println("Server is off!");
                 serverSocket.close();
 
             } catch (IOException e) {
@@ -54,65 +52,46 @@ public class ChatServer {
     }
 
 
-    void sendMessageToRoommates(MessageToClient message, String roomId) {
-        for (ClientHandler client : clients) {
-            if (client.getRoomId().equals(roomId)) {
-                client.sendMessage(message);
-            }
-        }
-    }
-    void sendPrivateMessage(MessageToClient message, String roomId, String receiverName){
-        for (ClientHandler client : clients) {
-            if(client.getRoomId().equals(roomId) && client.getNickname().equals(receiverName)){
-                client.sendMessage(message);
+    void removeEmptyRooms(){ // TODO: 06.07.2018 insert this somewhere
+        Iterator<Room> it= roomPull.iterator();
+        while (it.hasNext()){
+            Room r = it.next();
+            if(r.isEmpty()){
+                roomPull.remove(r);
             }
         }
     }
 
+    Room getRoomById(String id) {
+        for (Room room : roomPull) {
+            if (room.getRoomId().equals(id)) {
+                return room;
+            }
+        }
+        return systemRoom;
+    }
+
+    void sendMessageToAllRoom(MessageToClient message, String roomId) {
+        getRoomById(roomId).sendMessage(message);
+    }
+
+    void sendPrivateMessage(MessageToClient message, String roomId, String receiverName) {
+        getRoomById(roomId).sendPrivateMessage(message,receiverName);
+    }
+
+
+    void addNewClient(ClientHandler client) {
+        Room room = getRoomById(client.getRoomId());
+
+        if (room == systemRoom) {
+            room = new Room(client.getRoomId());
+            roomPull.add(room);
+        }
+        room.addRoommate(client);
+    }
+
+    void removeClient(ClientHandler client) {
+            getRoomById(client.getRoomId()).removeRoommate(client);
+    }
 }
 
-class Room{
-    private ArrayList<ClientHandler> roommates = new ArrayList<>();
-
-    private String roomId;
-
-
-    public ArrayList<ClientHandler> getRoommates() {
-        return roommates;
-    }
-
-    Room(String id){
-        roomId = id;
-    }
-
-    public String getRoomId() {
-        return roomId;
-    }
-
-    boolean isEmty(){
-        return roommates.isEmpty();
-    }
-
-    public void addRoommate(ClientHandler client){
-        roommates.add(client);
-    }
-
-    public  int numberOfChatters(){
-        return roommates.size();
-    }
-
-    public void sendMessage(MessageToClient message){
-        for (ClientHandler roommate : roommates) {
-            roommate.sendMessage(message);
-        }
-    }
-
-    public void sendPrivateMessage(MessageToClient message, String receiver){
-        for (ClientHandler roommate : roommates) {
-            if(roommate.getNickname().equals(receiver)){
-                roommate.sendMessage(message);
-            }
-        }
-    }
-
-}
