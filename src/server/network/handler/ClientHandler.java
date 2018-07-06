@@ -1,6 +1,7 @@
-package server.network;
+package server.network.handler;
 
-import server.messages.MessageToClient;
+import server.messages.ResponseToClient;
+import server.network.server.ChatServer;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -21,11 +22,11 @@ public class ClientHandler implements Runnable {
 
 
 
-    String getRoomId() {
+    public String getRoomId() {
         return roomId;
     }
 
-    ClientHandler(Socket clientSocket, ChatServer chatServer) {
+    public ClientHandler(Socket clientSocket, ChatServer chatServer) {
         try {
             this.chatServer = chatServer;
             this.outMessage = new DataOutputStream(clientSocket.getOutputStream());
@@ -53,7 +54,7 @@ public class ClientHandler implements Runnable {
                         }
                     }
 
-                    chatServer.sendMessageToAllRoom(MessageToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
+                    chatServer.sendMessageToAllRoom(ResponseToClient.PUBLIC_MESSAGE(nickname, clientMessage), roomId);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -63,7 +64,7 @@ public class ClientHandler implements Runnable {
 
     }
 
-    String getNickname() {
+    public String getNickname() {
         return nickname;
     }
 
@@ -110,7 +111,7 @@ public class ClientHandler implements Runnable {
                 return true;
 
             default:
-                sendMessage(MessageToClient.WARNING("No such command!\n" +
+                sendMessage(ResponseToClient.WARNING("No such command!\n" +
                         "Type \"/help\" for information!"));
                 return true;
 
@@ -118,12 +119,12 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleClearCommand(String[] parse) { // TODO: 06.07.2018 diff types of clear
-        sendMessage(MessageToClient.COMMAND("clear"));
+        sendMessage(ResponseToClient.COMMAND("clear"));
     }
 
     private void handlePMessage(String[] parse, String message) {
         if (parse.length < 2) {
-            sendMessage(MessageToClient.WARNING("Missing argument (reciever)"));
+            sendMessage(ResponseToClient.WARNING("Missing argument (reciever)"));
             return;
         }
 
@@ -133,21 +134,22 @@ public class ClientHandler implements Runnable {
                 replaceFirst(reciever,"").
                 trim();
 
-        chatServer.sendPrivateMessage(MessageToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, reciever);
+        chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, reciever);
         if(!nickname.equals(reciever)) {
-            chatServer.sendPrivateMessage(MessageToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, nickname);
+            chatServer.sendPrivateMessage(ResponseToClient.PRIVATE_MESSAGE(nickname, message, reciever), roomId, nickname);
         }
 
     }
 
     private void handleExitCommand() {
         handleLeaveCommand();
-        sendMessage(MessageToClient.COMMAND("exit"));
+        sendMessage(ResponseToClient.COMMAND("exit"));
         chatServer.removeClient(this);
+
     }
 
     private void handleCountCommand() {
-        sendMessage(MessageToClient.NOTE("Current number of chatters: "
+        sendMessage(ResponseToClient.NOTE("Current number of chatters: "
                 + chatServer.getRoomById(roomId).numberOfChatters()));
     }
 
@@ -156,12 +158,12 @@ public class ClientHandler implements Runnable {
         for (ClientHandler clientHandler : chatServer.getRoomById(roomId).getClients()) {
                 str.append(clientHandler.toString()).append('\n');
         }
-        sendMessage(MessageToClient.NOTE("People in this room:\n" + str.toString()));
+        sendMessage(ResponseToClient.NOTE("People in this room:\n" + str.toString()));
     }
 
     private void handleHelpCommand(String[] parse) {
         if(parse.length == 1) {
-            sendMessage(MessageToClient.NOTE(
+            sendMessage(ResponseToClient.NOTE(
                     "commands:\n" +
                             "/help <command> - detail help on given command\n" +
                             "/nick - show your current nickname\n" +
@@ -182,29 +184,29 @@ public class ClientHandler implements Runnable {
         }
         switch (parse[1]){
             case "nick":
-                sendMessage(MessageToClient.NOTE("Nick should contain only numbers, letters or '_'.\n" +
+                sendMessage(ResponseToClient.NOTE("Nick should contain only numbers, letters or '_'.\n" +
                         "Nick's length can't be less than 3.\n" +
                         "Any whitespace characters are forbidden."));
                 break;
 
             case "room":
-                sendMessage(MessageToClient.NOTE("Room id should contain only numbers, letters or '_'.\n"+
+                sendMessage(ResponseToClient.NOTE("Room id should contain only numbers, letters or '_'.\n"+
                         "Id's length can't be less than 3.\n"+
                         "Any whitespace characters are forbidden."));
                 break;
 
             case "leave":
-                sendMessage(MessageToClient.NOTE("After this command you go to empty room with unreachable for\n" +
+                sendMessage(ResponseToClient.NOTE("After this command you go to empty room with unreachable for\n" +
                         "other users id."));
                 break;
 
             case "w":
-                sendMessage(MessageToClient.NOTE("Nickname should be wrote correctly (see /help nick).\n" +
+                sendMessage(ResponseToClient.NOTE("Nickname should be wrote correctly (see /help nick).\n" +
                         "Also you can PM to yourself or to non-existing users (for notes maybe)"));
                 break;
 
                 default:
-                    sendMessage(MessageToClient.NOTE("CommandMessage is not correct"));
+                    sendMessage(ResponseToClient.NOTE("CommandMessage is not correct"));
                     break;
         }
 
@@ -213,17 +215,17 @@ public class ClientHandler implements Runnable {
 
     private void handleRoomCommand(String[] parse) {
         if (parse.length == 1) {
-            sendMessage(MessageToClient.NOTE("Current room is: " + roomId));
+            sendMessage(ResponseToClient.NOTE("Current room is: " + roomId));
             return;
         }
 
         if(parse.length > 2 || parse[1].length() < 3 || !parse[1].matches("((?U)\\w+)|")){
-            sendMessage(MessageToClient.WARNING("Room id is not correct!\nSee /help room"));
+            sendMessage(ResponseToClient.WARNING("Room id is not correct!\nSee /help room"));
             return;
         }
 
         if (roomId.equals(parse[1])) {
-            sendMessage(MessageToClient.WARNING("You are already in this room!"));
+            sendMessage(ResponseToClient.WARNING("You are already in this room!"));
             return;
         }
 
@@ -233,13 +235,13 @@ public class ClientHandler implements Runnable {
         roomId = parse[1];
         chatServer.addNewClient(this);
 
-        sendMessage(MessageToClient.COMMAND("room_change",roomId));
+        sendMessage(ResponseToClient.COMMAND("room_change",roomId));
 
         nickname = getUniqueNicknameInRoom(nickname);
-        sendMessage(MessageToClient.COMMAND("nick_change",nickname));
+        sendMessage(ResponseToClient.COMMAND("nick_change",nickname));
 
-        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " joined the room!"), roomId);
-        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
+        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " joined the room!"), roomId);
+        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
 
     }
 
@@ -265,27 +267,27 @@ public class ClientHandler implements Runnable {
 
     private void handleNickCommand(String[] parse) {
         if (parse.length == 1) {
-            sendMessage(MessageToClient.NOTE("Your nickname is: " + nickname));
+            sendMessage(ResponseToClient.NOTE("Your nickname is: " + nickname));
             return;
         }
 
         if(parse.length > 2 || parse[1].length() < 3 || !parse[1].matches("((?U)\\w+)|")){
-            sendMessage(MessageToClient.WARNING("New nickname is not correct!\nSee /help nick"));
+            sendMessage(ResponseToClient.WARNING("New nickname is not correct!\nSee /help nick"));
             return;
         }
 
         if( parse[1].equals(nickname) || nameIsNotUniqueInRoom(parse[1])){
-            sendMessage(MessageToClient.WARNING("Nickname \""+parse[1]+"\" is already occupied in this room!\n" +
+            sendMessage(ResponseToClient.WARNING("Nickname \""+parse[1]+"\" is already occupied in this room!\n" +
                     "/list - to see all chatters."));
             return;
         }
 
         if (!nickname.isEmpty()) {
-            chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " changed nick to: " + parse[1]), roomId);
+            chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " changed nick to: " + parse[1]), roomId);
         }
 
         nickname = parse[1];
-        sendMessage(MessageToClient.COMMAND("nick_change",nickname));
+        sendMessage(ResponseToClient.COMMAND("nick_change",nickname));
     }
 
 
@@ -297,8 +299,8 @@ public class ClientHandler implements Runnable {
         roomId = nickname + randomRoom();
         chatServer.addNewClient(this);
 
-        chatServer.sendMessageToAllRoom(MessageToClient.NOTE(nickname + " left the room"), tempRoom);
-        sendMessage(MessageToClient.NOTE("You are in empty/private room now"));
+        chatServer.sendMessageToAllRoom(ResponseToClient.NOTE(nickname + " left the room"), tempRoom);
+        sendMessage(ResponseToClient.NOTE("You are in empty/private room now"));
     }
 
     private String randomRoom() {
@@ -309,7 +311,7 @@ public class ClientHandler implements Runnable {
         return str.toString();
     }
 
-    void sendMessage(MessageToClient msg) {
+    public void sendMessage(ResponseToClient msg) {
 
         try {
             outMessage.writeUTF(msg.toString());

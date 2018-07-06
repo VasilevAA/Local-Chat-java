@@ -1,45 +1,46 @@
-package server.network;
+package server.network.room;
 
-import server.messages.MessageToClient;
+import server.messages.ResponseToClient;
+import server.network.handler.ClientHandler;
 
 import java.util.ArrayList;
 
-class Room {
+public class Room {
     private ArrayList<ClientHandler> clients = new ArrayList<>();
 
     private String roomId;
 
-    ArrayList<ClientHandler> getClients() {
+    public ArrayList<ClientHandler> getClients() {
         return clients;
     }
 
-    Room(String id) {
+    public Room(String id) {
         roomId = id;
     }
 
-    String getRoomId() {
+    public String getRoomId() {
         return roomId;
     }
 
-    void addRoommate(ClientHandler client) {
+    public void addRoommate(ClientHandler client) {
         clients.add(client);
     }
 
-    void removeRoommate(ClientHandler client) {
+    public void removeRoommate(ClientHandler client) {
         clients.remove(client);
     }
 
-    int numberOfChatters() {
+    public int numberOfChatters() {
         return clients.size();
     }
 
-    void sendMessage(MessageToClient message) {
+    public void sendMessage(ResponseToClient message) {
         for (ClientHandler roommate : clients) {
             roommate.sendMessage(message);
         }
     }
 
-    void sendPrivateMessage(MessageToClient message, String receiver) {
+    public void sendPrivateMessage(ResponseToClient message, String receiver) {
         for (ClientHandler roommate : clients) {
             if (roommate.getNickname().equals(receiver)) {
                 roommate.sendMessage(message);
@@ -47,7 +48,7 @@ class Room {
         }
     }
 
-    boolean isEmpty(){
+    public boolean isEmpty(){
         return clients.isEmpty();
     }
 

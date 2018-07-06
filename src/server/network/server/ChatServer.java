@@ -1,7 +1,9 @@
-package server.network;
+package server.network.server;
 
 
-import server.messages.MessageToClient;
+import server.messages.ResponseToClient;
+import server.network.handler.ClientHandler;
+import server.network.room.Room;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -62,7 +64,7 @@ public class ChatServer {
         }
     }
 
-    Room getRoomById(String id) {
+    public Room getRoomById(String id) {
         for (Room room : roomPull) {
             if (room.getRoomId().equals(id)) {
                 return room;
@@ -71,16 +73,16 @@ public class ChatServer {
         return systemRoom;
     }
 
-    void sendMessageToAllRoom(MessageToClient message, String roomId) {
+    public void sendMessageToAllRoom(ResponseToClient message, String roomId) {
         getRoomById(roomId).sendMessage(message);
     }
 
-    void sendPrivateMessage(MessageToClient message, String roomId, String receiverName) {
+    public void sendPrivateMessage(ResponseToClient message, String roomId, String receiverName) {
         getRoomById(roomId).sendPrivateMessage(message,receiverName);
     }
 
 
-    void addNewClient(ClientHandler client) {
+    public void addNewClient(ClientHandler client) {
         Room room = getRoomById(client.getRoomId());
 
         if (room == systemRoom) {
@@ -90,7 +92,7 @@ public class ChatServer {
         room.addRoommate(client);
     }
 
-    void removeClient(ClientHandler client) {
+    public void removeClient(ClientHandler client) {
             getRoomById(client.getRoomId()).removeRoommate(client);
     }
 }

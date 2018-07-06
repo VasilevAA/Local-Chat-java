@@ -1,7 +1,6 @@
 package client.menu;
 
-import client.chat.gui.*;
-import javafx.application.Application;
+import client.chat.gui.ChatWindow;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
