@@ -3,19 +3,13 @@ package server.network.room;
 import server.messages.ResponseToClient;
 import server.network.handler.ClientHandler;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 
-public class Room extends ArrayList<ClientHandler>{
-    private ArrayList<ClientHandler> clients = new ArrayList<>();
+public class Room extends HashSet<ClientHandler> {
 
     private String roomId;
 
-//    public ArrayList<ClientHandler> getClients() {
-//        return clients;
-//    }
-
     public Room(String id) {
-        super();
         roomId = id;
     }
 
@@ -23,34 +17,18 @@ public class Room extends ArrayList<ClientHandler>{
         return roomId;
     }
 
-//    public void addRoommate(ClientHandler client) {
-//        clients.add(client);
-//    }
-//
-//    public void removeRoommate(ClientHandler client) {
-//        clients.remove(client);
-//    }
-//
-//    public int numberOfChatters() {
-//        return clients.size();
-//    }
-
     public void sendMessage(ResponseToClient message) {
-        for (ClientHandler roommate : clients) {
+        for (ClientHandler roommate : this) {
             roommate.sendMessage(message);
         }
     }
 
     public void sendPrivateMessage(ResponseToClient message, String receiver) {
-        for (ClientHandler roommate : clients) {
+        for (ClientHandler roommate : this) {
             if (roommate.getNickname().equals(receiver)) {
                 roommate.sendMessage(message);
             }
         }
-    }
-
-    public boolean isEmpty(){
-        return clients.isEmpty();
     }
 
 }

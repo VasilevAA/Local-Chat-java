@@ -127,12 +127,12 @@ public class ClientHandler implements Runnable {
 
     private void handleCountCommand() {
         sendMessage(ResponseToClient.NOTE("Current number of chatters: "
-                + chatServer.getRoomById(roomId).numberOfChatters()));
+                + chatServer.getRoomById(roomId).size()));
     }
 
     private void handleListCommand() {
         StringBuilder str = new StringBuilder();
-        for (ClientHandler clientHandler : chatServer.getRoomById(roomId).getClients()) {
+        for (ClientHandler clientHandler : chatServer.getRoomById(roomId)) {
             str.append(clientHandler.toString()).append('\n');
         }
         sendMessage(ResponseToClient.NOTE("People in this room:\n" + str.toString()));
@@ -225,7 +225,7 @@ public class ClientHandler implements Runnable {
     }
 
     private boolean nameIsNotUniqueInRoom(String nick) {
-        for (ClientHandler client : chatServer.getRoomById(roomId).getClients()) {
+        for (ClientHandler client : chatServer.getRoomById(roomId)) {
             if (client != this && client.getNickname().equals(nick)) {
                 return true;
             }

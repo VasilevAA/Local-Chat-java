@@ -8,14 +8,14 @@ import server.network.room.Room;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 
 public class ChatServer {
 
     private static final int PORT = 3443;
 
-    private ArrayList<Room> roomPull = new ArrayList<>();
+    private HashSet<Room> roomPull = new HashSet<>();
 
     private static final Room systemRoom = new Room("$$system##room&&"); //temporary room (to rid of null room)
 
@@ -82,11 +82,11 @@ public class ChatServer {
             room = new Room(client.getRoomId());
             roomPull.add(room);
         }
-        room.addRoommate(client);
+        room.add(client);
     }
 
     public void removeClient(ClientHandler client) {
-        getRoomById(client.getRoomId()).removeRoommate(client);
+        getRoomById(client.getRoomId()).remove(client);
     }
 
     public void sendGlobalMessage(){
