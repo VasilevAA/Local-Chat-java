@@ -283,7 +283,7 @@ public class ClientHandler implements Runnable {
     }
 
     private String randomRoom() {
-        StringBuilder str = new StringBuilder( "$&_" + nickname + "_&$");
+        StringBuilder str = new StringBuilder("$&_" + nickname + "_&$");
         for (int i = 1; i <= 50; i++) {
             str.append(new Random().nextInt(10)).append(nickname.charAt(new Random().nextInt(nickname.length())));
         }
@@ -307,6 +307,6 @@ public class ClientHandler implements Runnable {
 
     @Override
     public boolean equals(Object o) {
-            return o == this;
+        return o == this;
     }
 }
